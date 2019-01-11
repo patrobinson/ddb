@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/alecthomas/participle"
@@ -29,13 +29,18 @@ type value struct {
 	Bool   *bool    `| (@"true" | "false")`
 }
 
-func attrify(v *value) dynamodb.AttributeValue {
+func valueToAttribute(v *value) *dynamodb.AttributeValue {
 	if v.String != nil {
-		return dynamodb.AttributeValue{
+		return &dynamodb.AttributeValue{
 			S: v.String,
 		}
 	}
-	return dynamodb.AttributeValue{
+	if v.Bool != nil {
+		return &dynamodb.AttributeValue{
+			BOOL: v.Bool,
+		}
+	}
+	return &dynamodb.AttributeValue{
 		N: aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)),
 	}
 }
@@ -48,14 +53,20 @@ type ddbArgs struct {
 }
 
 func main() {
-	usage := "Usage: ddb <table-name> <get|set> \"<key='value',key=123>\""
-	args := os.Args
-	if len(args) < 3 {
+	table := flag.String("table", "", "The name of the table")
+	command := flag.String("command", "get", "The command, to get or set values")
+	statement := flag.String("statement", "", "A comma seperated list of key=value pairs to get or set in dynamo. Strings must be quoted (remember to escape them from your shell).")
+	endpoint := flag.String("endpoint", "", "Endpoint URL for DynamoDB. Useful for testing with local DynamoDB")
+	flag.Parse()
+
+	usage := "Usage: ddb -table <table-name> -command <get|set> -statement \"<key='value',key=123>\""
+	if *command != "get" && *command != "set" {
 		panic(usage)
 	}
-
-	command := args[1]
-	if command != "get" && command != "set" {
+	if *table == "" {
+		panic(usage)
+	}
+	if *statement == "" {
 		panic(usage)
 	}
 
@@ -64,16 +75,27 @@ func main() {
 		panic(err)
 	}
 	attr := &keyValue{}
-	parser.ParseString(args[2], attr)
+	parser.ParseString(*statement, attr)
 
-	if command == "get" && len(attr.Attributes) > 1 {
+	for _, a := range attr.Attributes {
+		if a.Value == nil {
+			panic(fmt.Sprintf("Invalid statement %s", *statement))
+		}
+	}
+
+	if *command == "get" && len(attr.Attributes) > 1 {
 		panic("Expected one key=value pair for a get request")
 	}
 
+	sess := session.New()
+	if *endpoint != "" {
+		sess.Config.Endpoint = endpoint
+	}
+
 	result, err := run(ddbArgs{
-		Client:    dynamodb.New(session.New()),
-		Table:     args[0],
-		Command:   args[1],
+		Client:    dynamodb.New(sess),
+		Table:     *table,
+		Command:   *command,
 		Arguments: attr,
 	})
 	if err != nil {
@@ -89,8 +111,11 @@ func run(args ddbArgs) (string, error) {
 	return "", set(args)
 }
 
-func get(c dynamodbiface.DynamoDBAPI, table, key string, value *value) (string, error) {
-	k := map[string]*dynamodb.AttributeValue{}
+func get(c dynamodbiface.DynamoDBAPI, table, key string, v *value) (string, error) {
+	k := map[string]*dynamodb.AttributeValue{
+		key: valueToAttribute(v),
+	}
+
 	resp, err := c.GetItem(&dynamodb.GetItemInput{
 		TableName: &table,
 		Key:       k,
@@ -110,14 +135,7 @@ func get(c dynamodbiface.DynamoDBAPI, table, key string, value *value) (string, 
 func set(args ddbArgs) error {
 	item := make(map[string]*dynamodb.AttributeValue)
 	for _, attr := range args.Arguments.Attributes {
-		if attr.Value.String != nil {
-			item[attr.Key].S = attr.Value.String
-		} else if attr.Value.Bool != nil {
-			item[attr.Key].BOOL = attr.Value.Bool
-		} else if attr.Value.Number != nil {
-			item[attr.Key].N = aws.String(strconv.FormatFloat(*attr.Value.Number, 'E', -1, 64))
-		}
-
+		item[attr.Key] = valueToAttribute(attr.Value)
 	}
 	_, err := args.Client.PutItem(&dynamodb.PutItemInput{
 		TableName: &args.Table,
