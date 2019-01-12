@@ -177,6 +177,25 @@ func TestParserNumberSet(t *testing.T) {
 	}
 }
 
+func TestParserList(t *testing.T) {
+	ast, err := parserSetup(`key=["a",12,3.0,true,[1,2,"b"]]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attributes, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	if len((*ast.Attributes[0].Value).List) != 5 {
+		t.Errorf("Expected Set to contain 2 values, got %d", len((*ast.Attributes[0].Value).Set))
+	}
+	if *(*ast.Attributes[0].Value).List[4].List[0].Number != 1 {
+		t.Errorf("Expected Set's value to be 1, got %f", *(*ast.Attributes[0].Value).List[4].List[0].Number)
+	}
+}
+
 func TestParserMultipleInts(t *testing.T) {
 	ast, err := parserSetup(`key=12,bar=2.1`)
 	if err != nil {
