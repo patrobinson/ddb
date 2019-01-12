@@ -21,9 +21,9 @@ ddb -table test -command get -statement 'foo="bar"'
 - [x] Bool
 - [x] Number Set
 - [x] String Set
+- [x] List
 - [ ] Binary Set
 - [ ] Binary
-- [ ] List
 - [ ] Map
 
 ## Local development

@@ -252,7 +252,7 @@ func TestSetStringSet(t *testing.T) {
 		Arguments: &keyValue{
 			Attributes: []*attribute{
 				{
-					Key: "string",
+					Key: "stringset",
 					Value: &value{
 						Set: []*value{
 							{
@@ -260,6 +260,71 @@ func TestSetStringSet(t *testing.T) {
 							},
 							{
 								String: aws.String("bar"),
+							},
+						},
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+}
+
+func TestSetList(t *testing.T) {
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "list",
+					Value: &value{
+						List: []*value{
+							{
+								String: aws.String("foo"),
+							},
+							{
+								Number: aws.Float64(1),
+							},
+						},
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+}
+
+func TestSetNestedList(t *testing.T) {
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "list",
+					Value: &value{
+						List: []*value{
+							{
+								String: aws.String("foo"),
+							},
+							{
+								List: []*value{
+									{
+										String: aws.String("bar"),
+									},
+									{
+										Number: aws.Float64(12.0),
+									},
+								},
 							},
 						},
 					},

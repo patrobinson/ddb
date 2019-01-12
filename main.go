@@ -28,6 +28,7 @@ type value struct {
 	Number *float64 `| @(Float|Int)`
 	Bool   *bool    `| (@"true" | "false")`
 	Set    []*value `| "(" { @@ [ "," ] } ")"`
+	List   []*value `| "[" { @@ [ "," ] } "]"`
 }
 
 func valueToAttribute(v *value) *dynamodb.AttributeValue {
@@ -54,12 +55,29 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 		}
 	case v.Number != nil:
 		return &dynamodb.AttributeValue{
-			N: aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)),
+			N: convertFloatToString(v.Number),
+		}
+	case v.List != nil:
+		return &dynamodb.AttributeValue{
+			L: convertList(v.List),
 		}
 	}
 
 	panic("Unable to convert value into AttributeValue")
 }
+
+func convertFloatToString(num *float64) *string {
+	return aws.String(strconv.FormatFloat(*num, 'E', -1, 64))
+}
+
+func convertList(list []*value) []*dynamodb.AttributeValue {
+	listValue := []*dynamodb.AttributeValue{}
+	for _, a := range list {
+		listValue = append(listValue, valueToAttribute(a))
+	}
+	return listValue
+}
+
 func allString(set []*value) (bool, []*string) {
 	stringSet := []*string{}
 	for _, v := range set {
@@ -77,7 +95,7 @@ func allNumber(set []*value) (bool, []*string) {
 		if v.Number == nil {
 			return false, numberSet
 		}
-		numberSet = append(numberSet, aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)))
+		numberSet = append(numberSet, convertFloatToString(v.Number))
 	}
 	return true, numberSet
 }
