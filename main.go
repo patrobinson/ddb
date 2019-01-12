@@ -31,17 +31,16 @@ type value struct {
 }
 
 func valueToAttribute(v *value) *dynamodb.AttributeValue {
-	if v.String != nil {
+	switch {
+	case v.String != nil:
 		return &dynamodb.AttributeValue{
 			S: v.String,
 		}
-	}
-	if v.Bool != nil {
+	case v.Bool != nil:
 		return &dynamodb.AttributeValue{
 			BOOL: v.Bool,
 		}
-	}
-	if v.Set != nil {
+	case v.Set != nil:
 		if ok, stringSet := allString(v.Set); ok {
 			return &dynamodb.AttributeValue{
 				SS: stringSet,
@@ -53,12 +52,14 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 		} else {
 			panic("Invalid values found in Set. Must be all strings or all numbers")
 		}
+	case v.Number != nil:
+		return &dynamodb.AttributeValue{
+			N: aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)),
+		}
 	}
-	return &dynamodb.AttributeValue{
-		N: aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)),
-	}
-}
 
+	panic("Unable to convert value into AttributeValue")
+}
 func allString(set []*value) (bool, []*string) {
 	stringSet := []*string{}
 	for _, v := range set {
