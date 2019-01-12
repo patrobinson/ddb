@@ -27,6 +27,7 @@ type value struct {
 	String *string  `  @String`
 	Number *float64 `| @(Float|Int)`
 	Bool   *bool    `| (@"true" | "false")`
+	Set    []*value `| "(" { @@ [ "," ] } ")"`
 }
 
 func valueToAttribute(v *value) *dynamodb.AttributeValue {
@@ -40,9 +41,44 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 			BOOL: v.Bool,
 		}
 	}
+	if v.Set != nil {
+		if ok, stringSet := allString(v.Set); ok {
+			return &dynamodb.AttributeValue{
+				SS: stringSet,
+			}
+		} else if ok, numberSet := allNumber(v.Set); ok {
+			return &dynamodb.AttributeValue{
+				NS: numberSet,
+			}
+		} else {
+			panic("Invalid values found in Set. Must be all strings or all numbers")
+		}
+	}
 	return &dynamodb.AttributeValue{
 		N: aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)),
 	}
+}
+
+func allString(set []*value) (bool, []*string) {
+	stringSet := []*string{}
+	for _, v := range set {
+		if v.String == nil {
+			return false, stringSet
+		}
+		stringSet = append(stringSet, v.String)
+	}
+	return true, stringSet
+}
+
+func allNumber(set []*value) (bool, []*string) {
+	numberSet := []*string{}
+	for _, v := range set {
+		if v.Number == nil {
+			return false, numberSet
+		}
+		numberSet = append(numberSet, aws.String(strconv.FormatFloat(*v.Number, 'E', -1, 64)))
+	}
+	return true, numberSet
 }
 
 type ddbArgs struct {

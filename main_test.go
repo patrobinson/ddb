@@ -139,6 +139,44 @@ func TestParserMultipleStringsWithComma(t *testing.T) {
 	}
 }
 
+func TestParserStringSet(t *testing.T) {
+	ast, err := parserSetup(`key=("foo", "bar")`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attributes, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	if len((*ast.Attributes[0].Value).Set) != 2 {
+		t.Errorf("Expected Set to contain 2 values, got %d", len((*ast.Attributes[0].Value).Set))
+	}
+	if *(*ast.Attributes[0].Value).Set[0].String != "foo" {
+		t.Errorf("Expected Set's first value to be foo, got %s", *(*ast.Attributes[0].Value).Set[0].String)
+	}
+}
+
+func TestParserNumberSet(t *testing.T) {
+	ast, err := parserSetup(`key=(123, 45.1)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attributes, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	if len((*ast.Attributes[0].Value).Set) != 2 {
+		t.Errorf("Expected Set to contain 2 values, got %d", len((*ast.Attributes[0].Value).Set))
+	}
+	if *(*ast.Attributes[0].Value).Set[1].Number != 45.1 {
+		t.Errorf("Expected Set's first value to be 45.1, got %f", *(*ast.Attributes[0].Value).Set[0].Number)
+	}
+}
+
 func TestParserMultipleInts(t *testing.T) {
 	ast, err := parserSetup(`key=12,bar=2.1`)
 	if err != nil {
@@ -178,6 +216,10 @@ func (d *mockDynamo) GetItem(input *dynamodb.GetItemInput) (*dynamodb.GetItemOut
 	}, nil
 }
 
+func (d *mockDynamo) PutItem(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+	return &dynamodb.PutItemOutput{}, nil
+}
+
 func TestGetString(t *testing.T) {
 	args := ddbArgs{
 		Client:  &mockDynamo{},
@@ -192,6 +234,7 @@ func TestGetString(t *testing.T) {
 				},
 			},
 		},
+		Table: "testing",
 	}
 	output, err := run(args)
 	if err != nil {
@@ -199,5 +242,34 @@ func TestGetString(t *testing.T) {
 	}
 	if output != `{"number":123.4,"string":"bar"}` {
 		t.Errorf("Expected result to be 'bar', got '%s'", output)
+	}
+}
+
+func TestSetStringSet(t *testing.T) {
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "string",
+					Value: &value{
+						Set: []*value{
+							{
+								String: aws.String("foo"),
+							},
+							{
+								String: aws.String("bar"),
+							},
+						},
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
 	}
 }

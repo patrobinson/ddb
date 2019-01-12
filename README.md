@@ -19,8 +19,8 @@ ddb -table test -command get -statement 'foo="bar"'
 - [x] String
 - [x] Number
 - [x] Bool
-- [ ] Number Set
-- [ ] String Set
+- [x] Number Set
+- [x] String Set
 - [ ] Binary Set
 - [ ] Binary
 - [ ] List
