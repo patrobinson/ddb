@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
+	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -133,6 +137,32 @@ func TestParserSimpleMap(t *testing.T) {
 	}
 	if !reflect.DeepEqual(*ast.Attributes[0].Value.Map, expected) {
 		t.Errorf(`Expected Value to be '{"a":"b"}', got '%v'`, *ast.Attributes[0].Value.Map)
+	}
+}
+
+func TestParserSimpleBinary(t *testing.T) {
+	ast, err := parserSetup(`key={"fixtures/binary"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attribute, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	reader := bytes.NewReader(*ast.Attributes[0].Value.Binary)
+	bufferedReader := bufio.NewReader(reader)
+	gzipReader, err := gzip.NewReader(bufferedReader)
+	if err != nil {
+		t.Fatalf("Error gzip decoding bytes %s", err)
+	}
+	uncompressed, err := ioutil.ReadAll(gzipReader)
+	if err != nil {
+		t.Fatalf("Error reading gzip bytes %s", err)
+	}
+	if string(uncompressed) != "Hello World\n" {
+		t.Errorf("Expected uncompressed bytes to be 'Hello World', got %s", uncompressed)
 	}
 }
 
@@ -348,6 +378,29 @@ func TestSetMap(t *testing.T) {
 								S: aws.String("foo"),
 							},
 						},
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+}
+
+func TestSetBinary(t *testing.T) {
+	compressedBytes := binary([]byte{31, 139, 8, 8, 236, 18, 59, 92, 0, 3, 116, 101, 115, 116, 0, 243, 72, 205, 201, 201, 87, 8, 207, 47, 202, 73, 225, 2, 0, 227, 229, 149, 176, 12, 0, 0, 0})
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "map",
+					Value: &value{
+						Binary: &compressedBytes,
 					},
 				},
 			},

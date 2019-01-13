@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 
 	"github.com/alecthomas/participle"
@@ -31,6 +32,21 @@ type value struct {
 	Set    []*value   `| "(" { @@ [ "," ] } ")"`
 	List   []*value   `| "[" { @@ [ "," ] } "]"`
 	Map    *dynamoMap `| @RawString`
+	Binary *binary    `| "{" @String "}"`
+}
+
+type binary []byte
+
+func (b *binary) Capture(v []string) error {
+	if len(v) != 1 {
+		return fmt.Errorf("Expected one file name, got %d", len(v))
+	}
+	raw, err := ioutil.ReadFile(v[0])
+	if err != nil {
+		return fmt.Errorf("Error reading file: %s", err)
+	}
+	*b = raw
+	return nil
 }
 
 type dynamoMap map[string]*dynamodb.AttributeValue
@@ -85,6 +101,10 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 	case v.Map != nil:
 		return &dynamodb.AttributeValue{
 			M: map[string]*dynamodb.AttributeValue(*v.Map),
+		}
+	case v.Binary != nil:
+		return &dynamodb.AttributeValue{
+			B: []byte(*v.Binary),
 		}
 	}
 
