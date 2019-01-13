@@ -44,7 +44,7 @@ Map:
 ddb -table cricketers -command set -statement 'country="Australia",players=`{"Tim Paine":{"Batting Avg": 34.78}}`'
 ```
 
-Binary:
+Binary, loaded from a file:
 ```
 ddb -table cricketers -command set -statement 'country="Australia",players={"players.gz"}'
 ```
@@ -53,6 +53,11 @@ Binary Set:
 ```
 ddb -table cricketers -command set -statement 'country="Australia",players=({"players1.gz"},{"players2.gz"})'
 ```
+
+## Development Status
+
+I consider this software to be "feature complete" so adding new features is unlikely, unless DynamoDB supports new data types.
+Bug reports and other inquiries though are welcome.
 
 ## Supported Datatypes
 
@@ -63,8 +68,8 @@ ddb -table cricketers -command set -statement 'country="Australia",players=({"pl
 - [x] String Set
 - [x] List
 - [x] Map
-- [ ] Binary Set
-- [ ] Binary
+- [x] Binary Set
+- [x] Binary
 
 ## Local development
 
