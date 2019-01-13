@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"strconv"
@@ -24,11 +25,31 @@ type attribute struct {
 }
 
 type value struct {
-	String *string  `  @String`
-	Number *float64 `| @(Float|Int)`
-	Bool   *bool    `| (@"true" | "false")`
-	Set    []*value `| "(" { @@ [ "," ] } ")"`
-	List   []*value `| "[" { @@ [ "," ] } "]"`
+	String *string    `  @String`
+	Number *float64   `| @(Float|Int)`
+	Bool   *bool      `| (@"true" | "false")`
+	Set    []*value   `| "(" { @@ [ "," ] } ")"`
+	List   []*value   `| "[" { @@ [ "," ] } "]"`
+	Map    *dynamoMap `| @RawString`
+}
+
+type dynamoMap map[string]*dynamodb.AttributeValue
+
+func (d *dynamoMap) Capture(v []string) error {
+	if len(v) < 1 {
+		return errors.New("Empty string detected, wanted JSON object")
+	}
+	if len(v) > 1 {
+		return errors.New("Multiple JSON objects detected, wanted one")
+	}
+	var jsonBlob interface{}
+	err := json.Unmarshal([]byte(v[0]), &jsonBlob)
+	if err != nil {
+		return err
+	}
+	av, err := dynamodbattribute.MarshalMap(jsonBlob)
+	*d = dynamoMap(av)
+	return nil
 }
 
 func valueToAttribute(v *value) *dynamodb.AttributeValue {
@@ -59,7 +80,11 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 		}
 	case v.List != nil:
 		return &dynamodb.AttributeValue{
-			L: convertList(v.List),
+			L: convertListToAttributeValue(v.List),
+		}
+	case v.Map != nil:
+		return &dynamodb.AttributeValue{
+			M: map[string]*dynamodb.AttributeValue(*v.Map),
 		}
 	}
 
@@ -70,7 +95,7 @@ func convertFloatToString(num *float64) *string {
 	return aws.String(strconv.FormatFloat(*num, 'E', -1, 64))
 }
 
-func convertList(list []*value) []*dynamodb.AttributeValue {
+func convertListToAttributeValue(list []*value) []*dynamodb.AttributeValue {
 	listValue := []*dynamodb.AttributeValue{}
 	for _, a := range list {
 		listValue = append(listValue, valueToAttribute(a))

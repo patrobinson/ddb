@@ -19,24 +19,29 @@ Create an Item with string and number types:
 ddb -table books -command set -statement 'book="1984",author="George Orwell",isbn=9780143566496'
 ```
 
-Create an Item with bool types:
+Bool types:
 ```
 ddb -table books -command set -statement 'book="1984",bestseller=true'
 ```
 
-Create an Item with string sets:
+String sets:
 ```
 ddb -table authors -command set -statement 'author="George Orwell",books=("1984","Animal Farm")'
 ```
 
-Create an Item with number sets:
+Number sets:
 ```
 ddb -table authors -command set -statement 'author="George Orwell",isbns=(9780143566496,9780141036144,9780241341667)'
 ```
 
-Create an Item with a list:
+List:
 ```
-ddb -table cricketers -command set -statement 'name="Sir Donald Bradman,testscores=[18,1,79,112,40,58,123,37]'
+ddb -table cricketers -command set -statement 'name="Sir Donald Bradman",testscores=[18,1,79,112,40,58,123,37]'
+```
+
+Map:
+```
+ddb -table cricketers -command set -statement 'country="Australia",players=`{"Tim Paine":{"Batting Avg": 34.78}}`'
 ```
 
 ## Supported Datatypes
@@ -47,7 +52,7 @@ ddb -table cricketers -command set -statement 'name="Sir Donald Bradman,testscor
 - [x] Number Set
 - [x] String Set
 - [x] List
-- [ ] Map
+- [x] Map
 - [ ] Binary Set
 - [ ] Binary
 

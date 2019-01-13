@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/alecthomas/participle"
@@ -21,6 +22,25 @@ func parserSetup(attributes string) (*keyValue, error) {
 
 func TestParserSimpleString(t *testing.T) {
 	ast, err := parserSetup(`key="value"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attribute, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	if *ast.Attributes[0].Value.String != "value" {
+		t.Errorf("Expected Value to be 'value', got '%s'", *ast.Attributes[0].Value.String)
+	}
+	if ast.Attributes[0].Value.Number != nil {
+		t.Errorf("Expected Number to be nil")
+	}
+}
+
+func TestParserStringSingleQuotes(t *testing.T) {
+	ast, err := parserSetup(`key='value'`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,6 +112,27 @@ func TestParserSimpleFloat(t *testing.T) {
 	}
 	if *ast.Attributes[0].Value.Number != 1.2 {
 		t.Errorf("Expected Value to be '1.2', got '%f'", *ast.Attributes[0].Value.Number)
+	}
+}
+
+func TestParserSimpleMap(t *testing.T) {
+	ast, err := parserSetup("key=`{\"a\":\"b\"}`")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attribute, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	expected := dynamoMap{
+		"a": &dynamodb.AttributeValue{
+			S: aws.String("b"),
+		},
+	}
+	if !reflect.DeepEqual(*ast.Attributes[0].Value.Map, expected) {
+		t.Errorf(`Expected Value to be '{"a":"b"}', got '%v'`, *ast.Attributes[0].Value.Map)
 	}
 }
 
@@ -279,6 +320,32 @@ func TestSetStringSet(t *testing.T) {
 							},
 							{
 								String: aws.String("bar"),
+							},
+						},
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+}
+
+func TestSetMap(t *testing.T) {
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "map",
+					Value: &value{
+						Map: &dynamoMap{
+							"key": &dynamodb.AttributeValue{
+								S: aws.String("foo"),
 							},
 						},
 					},
