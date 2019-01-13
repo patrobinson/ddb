@@ -398,9 +398,39 @@ func TestSetBinary(t *testing.T) {
 		Arguments: &keyValue{
 			Attributes: []*attribute{
 				{
-					Key: "map",
+					Key: "binary",
 					Value: &value{
 						Binary: &compressedBytes,
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	_, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+}
+
+func TestSetBinarySet(t *testing.T) {
+	compressedBytes := binary([]byte{31, 139, 8, 8, 236, 18, 59, 92, 0, 3, 116, 101, 115, 116, 0, 243, 72, 205, 201, 201, 87, 8, 207, 47, 202, 73, 225, 2, 0, 227, 229, 149, 176, 12, 0, 0, 0})
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "set",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "binarySet",
+					Value: &value{
+						Set: []*value{
+							{
+								Binary: &compressedBytes,
+							},
+							{
+								Binary: &compressedBytes,
+							},
+						},
 					},
 				},
 			},

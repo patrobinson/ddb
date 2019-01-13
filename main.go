@@ -87,8 +87,12 @@ func valueToAttribute(v *value) *dynamodb.AttributeValue {
 			return &dynamodb.AttributeValue{
 				NS: numberSet,
 			}
+		} else if ok, binarySet := allBinary(v.Set); ok {
+			return &dynamodb.AttributeValue{
+				BS: binarySet,
+			}
 		} else {
-			panic("Invalid values found in Set. Must be all strings or all numbers")
+			panic("Invalid values found in Set. Must be all strings, all numbers or all binary")
 		}
 	case v.Number != nil:
 		return &dynamodb.AttributeValue{
@@ -143,6 +147,17 @@ func allNumber(set []*value) (bool, []*string) {
 		numberSet = append(numberSet, convertFloatToString(v.Number))
 	}
 	return true, numberSet
+}
+
+func allBinary(set []*value) (bool, [][]byte) {
+	binarySet := [][]byte{}
+	for _, v := range set {
+		if v.Binary == nil {
+			return false, binarySet
+		}
+		binarySet = append(binarySet, []byte(*v.Binary))
+	}
+	return true, binarySet
 }
 
 type ddbArgs struct {

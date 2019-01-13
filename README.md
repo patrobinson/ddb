@@ -44,6 +44,16 @@ Map:
 ddb -table cricketers -command set -statement 'country="Australia",players=`{"Tim Paine":{"Batting Avg": 34.78}}`'
 ```
 
+Binary:
+```
+ddb -table cricketers -command set -statement 'country="Australia",players={"players.gz"}'
+```
+
+Binary Set:
+```
+ddb -table cricketers -command set -statement 'country="Australia",players=({"players1.gz"},{"players2.gz"})'
+```
+
 ## Supported Datatypes
 
 - [x] String
