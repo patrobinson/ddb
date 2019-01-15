@@ -198,8 +198,8 @@ func main() {
 		}
 	}
 
-	if *command == "get" && len(attr.Attributes) > 1 {
-		panic("Expected one key=value pair for a get request")
+	if *command == "get" && len(attr.Attributes) > 2 {
+		panic("Expected one or two key=value pair(s) for a get request")
 	}
 
 	sess := session.New()
@@ -221,19 +221,24 @@ func main() {
 
 func run(args ddbArgs) (string, error) {
 	if args.Command == "get" {
-		return get(args.Client, args.Table, args.Arguments.Attributes[0].Key, args.Arguments.Attributes[0].Value)
+		return get(args.Client, args.Table, args.Arguments.Attributes)
 	}
 	return "", set(args)
 }
 
-func get(c dynamodbiface.DynamoDBAPI, table, key string, v *value) (string, error) {
-	k := map[string]*dynamodb.AttributeValue{
-		key: valueToAttribute(v),
+func get(c dynamodbiface.DynamoDBAPI, table string, attributes []*attribute) (string, error) {
+	key := map[string]*dynamodb.AttributeValue{}
+
+	for _, attr := range attributes {
+		k := attr.Key
+		v := attr.Value
+
+		key[k] = valueToAttribute(v)
 	}
 
 	resp, err := c.GetItem(&dynamodb.GetItemInput{
 		TableName: &table,
-		Key:       k,
+		Key:       key,
 	})
 	if err != nil {
 		return "", err

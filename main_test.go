@@ -335,6 +335,37 @@ func TestGetString(t *testing.T) {
 	}
 }
 
+func TestGetWithSortKey(t *testing.T) {
+	args := ddbArgs{
+		Client:  &mockDynamo{},
+		Command: "get",
+		Arguments: &keyValue{
+			Attributes: []*attribute{
+				{
+					Key: "partition",
+					Value: &value{
+						String: aws.String("foo"),
+					},
+				},
+				{
+					Key: "sort",
+					Value: &value{
+						String: aws.String("bar"),
+					},
+				},
+			},
+		},
+		Table: "testing",
+	}
+	output, err := run(args)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
+	}
+	if output != `{"number":123.4,"string":"bar"}` {
+		t.Errorf("Expected result to be 'bar', got '%s'", output)
+	}
+}
+
 func TestSetStringSet(t *testing.T) {
 	args := ddbArgs{
 		Client:  &mockDynamo{},
