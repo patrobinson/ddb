@@ -168,19 +168,39 @@ type ddbArgs struct {
 }
 
 func main() {
+
 	table := flag.String("table", "", "The name of the table")
 	command := flag.String("command", "get", "The command, to get or set values")
 	statement := flag.String("statement", "", "A comma seperated list of key=value pairs to get or set in dynamo. Strings must be quoted (remember to escape them from your shell).")
 	endpoint := flag.String("endpoint", "", "Endpoint URL for DynamoDB. Useful for testing with local DynamoDB")
 	flag.Parse()
 
-	usage := "Usage: ddb -table <table-name> -command <get|set> -statement \"<key='value',key=123>\""
-	if *command != "get" && *command != "set" {
+	usage := "Usage: ddb -table <table-name> -command <get|set|scan> -statement \"<key='value',key=123>\""
+	if *command != "get" && *command != "set" && *command != "scan" {
 		panic(usage)
 	}
 	if *table == "" {
 		panic(usage)
 	}
+
+	sess := session.New()
+	if *endpoint != "" {
+		sess.Config.Endpoint = endpoint
+	}
+
+	if *command == "scan" {
+		result, err := run(ddbArgs{
+			Client:  dynamodb.New(sess),
+			Table:   *table,
+			Command: *command,
+		})
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(result)
+		return
+	}
+
 	if *statement == "" {
 		panic(usage)
 	}
@@ -202,11 +222,6 @@ func main() {
 		panic("Expected one or two key=value pair(s) for a get request")
 	}
 
-	sess := session.New()
-	if *endpoint != "" {
-		sess.Config.Endpoint = endpoint
-	}
-
 	result, err := run(ddbArgs{
 		Client:    dynamodb.New(sess),
 		Table:     *table,
@@ -223,7 +238,31 @@ func run(args ddbArgs) (string, error) {
 	if args.Command == "get" {
 		return get(args.Client, args.Table, args.Arguments.Attributes)
 	}
+	if args.Command == "scan" {
+		return scan(args.Client, args.Table)
+	}
 	return "", set(args)
+}
+
+func scan(c dynamodbiface.DynamoDBAPI, table string) (string, error) {
+	var items []map[string]*dynamodb.AttributeValue
+	err := c.ScanPages(&dynamodb.ScanInput{
+		TableName: &table,
+	}, func(output *dynamodb.ScanOutput, _lastPage bool) bool {
+		items = append(items, output.Items...)
+		return true
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var serialisedResult []map[string]interface{}
+	err = dynamodbattribute.UnmarshalListOfMaps(items, &serialisedResult)
+	if err != nil {
+		return "", err
+	}
+	r, err := json.MarshalIndent(serialisedResult, "", "	")
+	return string(r), err
 }
 
 func get(c dynamodbiface.DynamoDBAPI, table string, attributes []*attribute) (string, error) {
