@@ -9,7 +9,7 @@ Install:
 go get -u github.com/patrobinson/ddb
 ```
 
-Get the contents of an item where foo=bar. Note the quotes are important:
+Get the contents of an item where foo=bar. Quotes are optional for strings:
 ```
 ddb -table test -command get -statement 'foo="bar"'
 ```
