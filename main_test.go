@@ -43,6 +43,25 @@ func TestParserSimpleString(t *testing.T) {
 	}
 }
 
+func TestParserStringWithNoQuotes(t *testing.T) {
+	ast, err := parserSetup(`key=value`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ast.Attributes) != 1 {
+		t.Fatalf("Expected one attribute, got %d", len(ast.Attributes))
+	}
+	if ast.Attributes[0].Key != "key" {
+		t.Errorf("Expected key to be 'key', got '%s'", ast.Attributes[0].Key)
+	}
+	if *ast.Attributes[0].Value.String != "value" {
+		t.Errorf("Expected Value to be 'value', got '%s'", *ast.Attributes[0].Value.String)
+	}
+	if ast.Attributes[0].Value.Number != nil {
+		t.Errorf("Expected Number to be nil")
+	}
+}
+
 func TestParserStringSingleQuotes(t *testing.T) {
 	ast, err := parserSetup(`key='value'`)
 	if err != nil {

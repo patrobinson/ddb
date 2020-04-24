@@ -26,13 +26,13 @@ type attribute struct {
 }
 
 type value struct {
-	String *string    `  @String`
-	Number *float64   `| @(Float|Int)`
+	Number *float64   ` @(Float|Int)`
 	Bool   *bool      `| (@"true" | "false")`
 	Set    []*value   `| "(" { @@ [ "," ] } ")"`
 	List   []*value   `| "[" { @@ [ "," ] } "]"`
 	Map    *dynamoMap `| @RawString`
 	Binary *binary    `| "{" @String "}"`
+	String *string    `| @(Ident|String)`
 }
 
 type binary []byte
